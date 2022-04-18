@@ -109,7 +109,7 @@ signupForm.addEventListener("submit", e => {
 
   createUserWithEmailAndPassword(auth, email, password)
     .then(cred => {
-      console.log(`user created: ${cred.user}`);
+      console.log("user created", cred.user);
       signupForm.reset();
     })
     .catch(err => {
