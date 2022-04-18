@@ -10,27 +10,31 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  getDoc,
   updateDoc,
 } from "firebase/firestore";
-
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOeAoxuRK0LCcOeVtYq5XHy5ePdLybV1A",
   authDomain: "fir-9-dojo-986f7.firebaseapp.com",
   projectId: "fir-9-dojo-986f7",
   storageBucket: "fir-9-dojo-986f7.appspot.com",
-  messaginSenderId: "310675130670",
+  messagingSenderId: "310675130670",
   appId: "1:310675130670:web:6e49d7dbb0da7701ca12bf",
 };
 
 // init firebase
-initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 
 // init services
-const db = getFirestore();
-const auth = getAuth();
+const db = getFirestore(app);
+const auth = getAuth(app);
 
 // collection ref
 const colRef = collection(db, "books");
@@ -38,12 +42,12 @@ const colRef = collection(db, "books");
 // queries
 const q = query(
   colRef,
-  // where("author", "==", "patrick rothfuss"),
+  where("author", "==", "patrick rothfuss"),
   orderBy("createdAt")
 );
 
 // realtime collection data
-onSnapshot(q, snapshot => {
+const unsubCol = onSnapshot(q, snapshot => {
   let books = [];
   snapshot.docs.forEach(doc => {
     books.push({ ...doc.data(), id: doc.id });
@@ -77,23 +81,22 @@ deleteBookForm.addEventListener("submit", e => {
   });
 });
 
-// get a single document
+// fetching a single document (& realtime)
+const docRef = doc(db, "books", "gGu4P9x0ZHK9SspA1d9j");
 
-const docRef = doc(db, "books", "XWzsa9aW74mGFh8InLuU");
-
-onSnapshot(docRef, doc => {
+const unsubDoc = onSnapshot(docRef, doc => {
   console.log(doc.data(), doc.id);
 });
 
 // updating a document
-
 const updateForm = document.querySelector(".update");
 updateForm.addEventListener("submit", e => {
   e.preventDefault();
 
-  const docRef = doc(db, "books", updateForm.id.value);
+  let docRef = doc(db, "books", updateForm.id.value);
+
   updateDoc(docRef, {
-    title: "The Name of the Wind",
+    title: "updated title",
   }).then(() => {
     updateForm.reset();
   });
@@ -109,10 +112,52 @@ signupForm.addEventListener("submit", e => {
 
   createUserWithEmailAndPassword(auth, email, password)
     .then(cred => {
-      console.log("user created", cred.user);
+      // console.log("user created:", cred.user);
       signupForm.reset();
     })
     .catch(err => {
       console.log(err.message);
     });
+});
+
+// logging in and out
+const logoutButton = document.querySelector(".logout");
+logoutButton.addEventListener("click", () => {
+  signOut(auth)
+    .then(() => {
+      // console.log("user signed out");
+    })
+    .catch(err => {
+      console.log(err.message);
+    });
+});
+
+const loginForm = document.querySelector(".login");
+loginForm.addEventListener("submit", e => {
+  e.preventDefault();
+
+  const email = loginForm.email.value;
+  const password = loginForm.password.value;
+
+  signInWithEmailAndPassword(auth, email, password)
+    .then(cred => {
+      // console.log("user logged in:", cred.user);
+      loginForm.reset();
+    })
+    .catch(err => {
+      console.log(err.message);
+    });
+});
+
+// subscribing to auth state changes
+const unsubAuth = onAuthStateChanged(auth, user => {
+  console.log("user state changed:", user);
+});
+
+// unsubscribing from changes (auth & db)
+const unsubButton = document.querySelector(".unsub");
+unsubButton.addEventListener("click", () => {
+  unsubAuth();
+  unsubCol();
+  unsubDoc();
 });
